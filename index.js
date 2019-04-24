@@ -20,10 +20,13 @@ sprite.anchor.y = 0.5
 
 function setup() {
 
-  sprite.x = 0;
-  sprite.y = 0;
-  sprite.vx = 1;
-  sprite.vy = 1;
+  const height = app.renderer.height;
+  const width = app.renderer.width;
+
+  sprite.x = width / 2
+  sprite.y = height / 2
+  sprite.vx = 0;
+  sprite.vy = 0;
 
   app.stage.addChild(sprite);
 
@@ -43,14 +46,15 @@ function gameLoop(delta) {
 
   if (sprite.x < 0 || sprite.x > width) {
     sprite.vx = -sprite.vx;
+    const rotation = vec2Rotation([sprite.vx, -sprite.vy])
+    sprite.rotation = rotation;
   }
 
   if (sprite.y < 0 || sprite.y > height) {
     sprite.vy = -sprite.vy;
+    const rotation = vec2Rotation([sprite.vx, -sprite.vy])
+    sprite.rotation = rotation;
   }
-
-  const rotation = vec2Rotation([sprite.vx, -sprite.vy])
-  sprite.rotation = rotation;
 }
 
 function vec2Normalize(p) {
@@ -68,8 +72,6 @@ function vec2Dot(p1, p2) {
 }
 
 function vec2Rotation(p1) {
-  //debugger;
-  // left handed co-ordinate system
   const pnorth = [0, 1]
   const pnorm = vec2Normalize(p1)
   const pdot = vec2Dot(pnorth, pnorm)
@@ -78,8 +80,26 @@ function vec2Rotation(p1) {
   return result
 }
 
+
 // run the game setup
 setup();
+
+window.addEventListener('click', playfieldClick, false);
+
+function playfieldClick(event) {
+
+  const p = new PIXI.Point()
+  app.renderer.plugins.interaction.mapPositionToPoint(p, event.x, event.y)
+
+  // construct a vector from the sprite to the point
+  const pv = [p.x - sprite.x, -(p.y - sprite.y)]
+  const pvn = vec2Normalize(pv)
+  const pr = vec2Rotation(pv)
+  console.log(pr);
+  sprite.rotation = pr;
+  sprite.vx = pvn[0] * 4
+  sprite.vy = -pvn[1] * 4
+}
 
 /*
 const sprites = {};
@@ -107,5 +127,4 @@ const updatePoints = (event) => {
   sprite.y = p.y
 }
 
-window.addEventListener('mousemove', updatePoints, false);
 */
