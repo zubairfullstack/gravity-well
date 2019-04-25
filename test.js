@@ -1,7 +1,7 @@
 const vnorth = [0, 1]
 const v1 = [1, 1]
 
-function v2Normalize(p) {
+function vec2Normalize(p) {
   const mag = Math.sqrt((p[0] * p[0]) + (p[1] * p[1]));
   const r = []
   r[0] = p[0] / mag;
@@ -10,7 +10,7 @@ function v2Normalize(p) {
   return r;
 }
 
-function v2Dot(p1, p2) {
+function vec2Dot(p1, p2) {
   const r = p1[0] * p2[0] + p1[1] * p2[1]
   return r;
 }
