@@ -5,11 +5,10 @@
 
 //Create a Pixi Application
 let app = new PIXI.Application({
-  width: 1280,
-  height: 720,
+  width: 640,
+  height: 640,
   antialias: true,
   transparent: false,
-  //resolution: 1,
   autoDensity: true,
   backgroundColor: 0x0e6251,
 });
@@ -38,33 +37,47 @@ let playerAnimationLimit = 10
 let playerAnimationCounter = 0
 
 let radiusFactor = 0.9375
+let playerFactor = 1.0
+let particleFactor = 1.0
+
+let radiusSize = 1
+let particleSize = 1
+let playerSize = 1
+
+// advanced steering mechanics
+let playfieldCapture = false
 
 function setup() {
 
-  const height = app.renderer.height;
-  const width = app.renderer.width;
+  // visual metrics
+  const vm = getVisualMetrics();
 
-  const xmin = 0
-  const xmax = width - 1
-  const ymin = 0
-  const ymax = height - 1
+  // calculate the radius size
+  radiusSize = radiusFactor * Math.min((vm.xmax - vm.xmin) / 2, (vm.ymax - vm.ymin) / 2)
 
   {
-    const radius = radiusFactor * Math.min((xmax - xmin) / 2, (ymax - ymin) / 2)
     let circle = new PIXI.Graphics();
     circle.beginFill(0x17202a);
-    circle.drawCircle(xmin + (xmax - xmin) / 2, ymin + (ymax - ymin) / 2, radius);
+    circle.drawCircle(vm.xmin + (vm.xmax - vm.xmin) / 2, vm.ymin + (vm.ymax - vm.ymin) / 2, radiusSize);
     circle.endFill();
     app.stage.addChild(circle);
   }
 
+  // calculate the particle size
+  particleSize = (radiusSize * 2) / 30
+
+  // calculate the player size
+  playerSize = (radiusSize * 2) / 5
+
   // setup particles
   for (let index = 0; index < particlesCount; index++) {
     const newSprite = new PIXI.Sprite.from('Particle03.png');
+    const newSpriteSize = Math.max(newSprite.width, newSprite.height)
+    const newSpriteScale = particleSize / newSpriteSize;
     newSprite.anchor.x = 0.5
     newSprite.anchor.y = 0.5
-    newSprite.scale.x = 0.50
-    newSprite.scale.y = 0.50
+    newSprite.scale.x = newSpriteScale
+    newSprite.scale.y = newSpriteScale
     newSprite.vx = 0
     newSprite.vy = 0
     particles[index] = newSprite;
@@ -73,14 +86,16 @@ function setup() {
   // setup player
   {
     const newSprite = new PIXI.Sprite.from(playerTexC[playerTexD]);
+    const newSpriteSize = Math.max(newSprite.width, newSprite.height)
+    const newSpriteScale = playerSize / newSpriteSize;
     newSprite.anchor.x = 0.5
     newSprite.anchor.y = 0.5
-    newSprite.scale.x = 4.0
-    newSprite.scale.y = 4.0
+    newSprite.scale.x = newSpriteScale
+    newSprite.scale.y = newSpriteScale
     newSprite.vx = 0
     newSprite.vy = 0
-    newSprite.x = xmin + (xmax - xmin) / 2
-    newSprite.y = xmin + (ymax - ymin) / 2
+    newSprite.x = vm.xmin + (vm.xmax - vm.xmin) / 2
+    newSprite.y = vm.xmin + (vm.ymax - vm.ymin) / 2
 
     player = newSprite
     app.stage.addChild(player);
@@ -111,11 +126,6 @@ function gameLoop(delta) {
     // collision detection
     collision();
   }
-
-  /*
-    // collision detection
-    collision();
-  */
 }
 
 function spawnParticles() {
@@ -125,7 +135,7 @@ function spawnParticles() {
     return;
   }
 
-  // disable spawning of particles before frame count
+  // slow down spawning of particles based on frame count
   particlesSpawnCounter += 1
   if (particlesSpawnCounter < particlesSpawnCounterLimit) {
     return;
@@ -140,13 +150,8 @@ function spawnParticles() {
 
     if (particle.parent === null) {
 
-      const height = app.renderer.height;
-      const width = app.renderer.width;
-
-      const xmin = 0
-      const xmax = width - 1
-      const ymin = 0
-      const ymax = height - 1
+      // visual metrics
+      const vm = getVisualMetrics();
 
       // setup this particle
 
@@ -157,29 +162,29 @@ function spawnParticles() {
 
         // x axis
         if (0.5 <= Math.random()) {
-          pstart[0] = xmin
-          pend[0] = xmax
+          pstart[0] = vm.xmin
+          pend[0] = vm.xmax
         } else {
-          pstart[0] = xmax
-          pend[0] = xmin
+          pstart[0] = vm.xmax
+          pend[0] = vm.xmin
         }
 
-        pstart[1] = ymin + (ymax - ymin) * Math.random()
-        pend[1] = ymin + (ymax - ymin) * Math.random()
+        pstart[1] = vm.ymin + (vm.ymax - vm.ymin) * Math.random()
+        pend[1] = vm.ymin + (vm.ymax - vm.ymin) * Math.random()
 
       } else {
 
         // y axis
         if (0.5 <= Math.random()) {
-          pstart[1] = ymin
-          pend[1] = ymax
+          pstart[1] = vm.ymin
+          pend[1] = vm.ymax
         } else {
-          pstart[1] = ymax
-          pend[1] = ymin
+          pstart[1] = vm.ymax
+          pend[1] = vm.ymin
         }
 
-        pstart[0] = xmin + (xmax - xmin) * Math.random()
-        pend[0] = xmin + (xmax - xmin) * Math.random()
+        pstart[0] = vm.xmin + (vm.xmax - vm.xmin) * Math.random()
+        pend[0] = vm.xmin + (vm.xmax - vm.xmin) * Math.random()
 
       }
 
@@ -216,20 +221,15 @@ function moveParticles(step) {
       particle.y = particle.y + (particle.vy * step)
 
       // visual metrics
-      const height = app.renderer.height;
-      const width = app.renderer.width;
-      const xmin = 0
-      const xmax = width - 1
-      const ymin = 0
-      const ymax = height - 1
+      const vm = getVisualMetrics();
 
       // check for boundary collision
-      if (particle.parent !== null && (particle.x < xmin || xmax < particle.x)) {
+      if (particle.parent !== null && (particle.x < vm.xmin || vm.xmax < particle.x)) {
         app.stage.removeChild(particle)
       }
 
       // check for boundary collision
-      if (particle.parent !== null && (particle.y < ymin || ymax < particle.y)) {
+      if (particle.parent !== null && (particle.y < vm.ymin || vm.ymax < particle.y)) {
         app.stage.removeChild(particle)
       }
     }
@@ -371,11 +371,13 @@ function vec2Rotation(p1) {
 // run the game setup
 setup();
 
-window.addEventListener('click', playfieldClick, false);
+window.addEventListener('mousedown', playfieldMouseDown, false);
+window.addEventListener('mousemove', playfieldMouseMove, false);
+window.addEventListener('mouseup', playfieldMouseUp, false);
+
 window.addEventListener('touchstart', playfieldTouch, false);
 
-function playfieldClick(event) {
-
+function playfieldMouseDown(event) {
   const p = new PIXI.Point()
   app.renderer.plugins.interaction.mapPositionToPoint(p, event.x, event.y)
 
@@ -385,6 +387,31 @@ function playfieldClick(event) {
 
   // aim the player
   aimSprite(player, pn)
+
+  // set capture
+  playfieldCapture = true;
+}
+
+function playfieldMouseMove(event) {
+  /*
+    if (playfieldCapture === true) {
+
+      const p = new PIXI.Point()
+      app.renderer.plugins.interaction.mapPositionToPoint(p, event.x, event.y)
+
+      // construct a vector from the sprite to the point
+      const pv = [p.x - player.x, p.y - player.y]
+      const pn = vec2Normalize(pv)
+
+      // aim the player
+      aimSprite(player, pn)
+    }
+  */
+}
+
+function playfieldMouseUp(event) {
+  // clear capture
+  playfieldCapture = false;
 }
 
 function playfieldTouch(event) {
