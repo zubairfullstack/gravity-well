@@ -72,7 +72,9 @@ function setup() {
   // setup particles
   for (let index = 0; index < particlesCount; index++) {
     const newSprite = new PIXI.Sprite.from('Particle03.png');
-    const newSpriteSize = Math.max(newSprite.width, newSprite.height)
+    // unable to query the texture size as it may not be loaded yet
+    // sprite size is known to be 32x32 => use hard coded value
+    const newSpriteSize = 32
     const newSpriteScale = particleSize / newSpriteSize;
     newSprite.anchor.x = 0.5
     newSprite.anchor.y = 0.5
@@ -86,7 +88,9 @@ function setup() {
   // setup player
   {
     const newSprite = new PIXI.Sprite.from(playerTexC[playerTexD]);
-    const newSpriteSize = Math.max(newSprite.width, newSprite.height)
+    // unable to query the texture size as it may not be loaded yet
+    // sprite size is known to be 32x32 => use hard coded value
+    const newSpriteSize = 32
     const newSpriteScale = playerSize / newSpriteSize;
     newSprite.anchor.x = 0.5
     newSprite.anchor.y = 0.5
