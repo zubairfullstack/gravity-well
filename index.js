@@ -21,6 +21,11 @@ document.getElementById('playfield').appendChild(app.view)
 
 let gameSpeedPlayer = 1.00;
 let gameSpeedParticles = 2.00;
+let gameScoreBorder = {}
+let gameScoreBackground = {}
+let gameScoreText = {}
+let gameScore = 0
+let gameDirection = -1
 
 const particles = []
 const particlesCount = 16
@@ -47,6 +52,7 @@ let radiusSize = 1
 let particleSize = 1
 let playerSize = 1
 
+
 function reset() {
 
   // visual metrics
@@ -54,6 +60,8 @@ function reset() {
 
   gameSpeedPlayer = 1.00;
   gameSpeedParticles = 2.00;
+  gameScore = 0
+  gameDirection = -1
   particlesSpawnCounter = 0
 
   playerTexD = 0
@@ -111,12 +119,13 @@ function setup() {
     const bm = getButton1Metrics();
 
     let circle = new PIXI.Graphics();
-    circle.beginFill(0xf9ebea);
+    circle.beginFill(0xe8f8f5);
     circle.drawCircle(bm.borderOrigin[0], bm.borderOrigin[1], bm.borderRadius);
     circle.endFill();
     app.stage.addChild(circle);
   }
 
+  // button 1
   {
     // button 1 metrics
     const bm = getButton1Metrics();
@@ -126,6 +135,53 @@ function setup() {
     circle.drawCircle(bm.borderOrigin[0], bm.borderOrigin[1], bm.buttonRadius);
     circle.endFill();
     app.stage.addChild(circle);
+  }
+
+  // button 2
+  {
+    // button 2 metrics
+    const bm = getButton2Metrics();
+
+    gameScoreBorder = new PIXI.Graphics();
+    gameScoreBorder.beginFill(0xe8f8f5);
+    gameScoreBorder.drawCircle(bm.borderOrigin[0], bm.borderOrigin[1], bm.borderRadius);
+    gameScoreBorder.endFill();
+    app.stage.addChild(gameScoreBorder);
+  }
+
+  // button 2
+  {
+    // button 2 metrics
+    const bm = getButton2Metrics();
+
+    let gameScoreBackground = new PIXI.Graphics();
+    gameScoreBackground.beginFill(0x17202a);
+    gameScoreBackground.drawCircle(bm.borderOrigin[0], bm.borderOrigin[1], bm.buttonRadius);
+    gameScoreBackground.endFill();
+    app.stage.addChild(gameScoreBackground);
+  }
+
+  // score
+  {
+    // button 2 metrics
+    const bm = getButton2Metrics();
+
+    let style = new PIXI.TextStyle({
+      fontFamily: "Arial",
+      fontSize: bm.borderRadius,
+      fill: "#e8f8f5",
+      stroke: '#c0392b',
+      strokeThickness: 0,
+      dropShadow: false,
+    })
+
+    gameScoreText = new PIXI.Text(gameScore, style);
+    gameScoreText.x = bm.borderOrigin[0]
+    gameScoreText.y = bm.borderOrigin[1]
+    gameScoreText.anchor.x = 0.5
+    gameScoreText.anchor.y = 0.5
+    app.stage.addChild(gameScoreText);
+
   }
 
   // calculate the particle size
@@ -195,6 +251,9 @@ function gameLoop(delta) {
     // collision detection
     collision();
   }
+
+  // update the score
+  gameScoreText.text = gameScore
 }
 
 function spawnParticles() {
@@ -375,12 +434,32 @@ function collision() {
       const collisionDistance = Math.max(playerRadius, particleRadius)
 
       if (distance < collisionDistance) {
+
         app.stage.removeChild(particle)
-        gameSpeedPlayer *= 1.10;
-        gameSpeedParticles *= 1.05;
-        player.scale.x /= 1.10;
-        player.scale.y /= 1.10;
-        //playerAnimationLimit *= 0.9;
+        gameScore = (gameScore + 1) % 100
+
+        if (0 > gameDirection) {
+          gameSpeedPlayer *= 1.10;
+          gameSpeedParticles *= 1.05;
+          player.scale.x *= 1 / 1.10;
+          player.scale.y *= 1 / 1.10;
+        } else {
+          gameSpeedPlayer *= 1 / 1.10;
+          gameSpeedParticles *= 1 / 1.05;
+          player.scale.x *= 1.10;
+          player.scale.y *= 1.10;
+        }
+
+        // check for a reversal of game direction
+        if (0 > gameDirection && player.scale.x < (particles[0].scale.x * 1)) {
+          gameDirection = +1
+        }
+
+        // check for a reversal of game direction
+        if (0 < gameDirection && player.scale.x > (particles[0].scale.x * 6)) {
+          gameDirection = -1
+        }
+
       }
     }
   }
@@ -411,6 +490,29 @@ function getButton1Metrics() {
   const borderRadius = playfieldDiameter / 16;
   const borderOrigin = [
     vm.xmin + borderMargin + borderRadius,
+    vm.ymax - borderMargin - borderRadius
+  ]
+
+  const buttonRadius = borderRadius * 0.9;
+
+  return {
+    borderMargin,
+    borderRadius,
+    borderOrigin,
+    buttonRadius
+  }
+}
+
+function getButton2Metrics() {
+
+  // visual metrics
+  const vm = getVisualMetrics();
+  const playfieldDiameter = radiusFactor * Math.min((vm.height), (vm.width))
+
+  const borderMargin = (vm.height - playfieldDiameter) / 2;
+  const borderRadius = playfieldDiameter / 16;
+  const borderOrigin = [
+    vm.xmax - borderMargin - borderRadius,
     vm.ymax - borderMargin - borderRadius
   ]
 
