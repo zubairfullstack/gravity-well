@@ -17,14 +17,15 @@ let app = new PIXI.Application({
 //Add the canvas that Pixi automatically created for you to the HTML document
 document.getElementById('playfield').appendChild(app.view)
 
+let gameSpeedPlayer = 1.00;
+let gameSpeedParticles = 2.00;
+
 const particles = []
 const particlesCount = 16
-const particlesSpeed = 2.0
-const particlesSpawnCounterLimit = 60;
+const particlesSpawnCounterLimit = 30;
 let particlesSpawnCounter = 0
 
 let player = {}
-let playerSpeed = 1.0;
 let playerTexC = [
   PIXI.Texture.from('Player01.png'),
   PIXI.Texture.from('Player02.png'),
@@ -33,7 +34,7 @@ let playerTexC = [
 ]
 
 let playerTexD = 0
-let playerAnimationLimit = 5
+let playerAnimationLimit = 10
 let playerAnimationCounter = 0
 
 let radiusFactor = 0.9375
@@ -74,8 +75,8 @@ function setup() {
     const newSprite = new PIXI.Sprite.from(playerTexC[playerTexD]);
     newSprite.anchor.x = 0.5
     newSprite.anchor.y = 0.5
-    newSprite.scale.x = 2.0
-    newSprite.scale.y = 2.0
+    newSprite.scale.x = 4.0
+    newSprite.scale.y = 4.0
     newSprite.vx = 0
     newSprite.vy = 0
     newSprite.x = xmin + (xmax - xmin) / 2
@@ -95,14 +96,26 @@ function gameLoop(delta) {
   // spawn the particles
   spawnParticles();
 
-  // move the particles
-  moveParticles(1.0)
+  const stepIterations = Math.ceil(Math.max(gameSpeedPlayer, gameSpeedParticles))
+  const stepSizeParticles = gameSpeedParticles / stepIterations;
+  const stepSizePlayer = gameSpeedPlayer / stepIterations
 
-  // move the player
-  movePlayer(1.0)
+  for (let index = 0; index < stepIterations; index++) {
 
-  // collision detection
-  collision();
+    // move the particles
+    moveParticles(stepSizeParticles)
+
+    // move the player
+    movePlayer(stepSizePlayer)
+
+    // collision detection
+    collision();
+  }
+
+  /*
+    // collision detection
+    collision();
+  */
 }
 
 function spawnParticles() {
@@ -111,6 +124,7 @@ function spawnParticles() {
   if (player.vx === 0.0 && player.vy === 0) {
     return;
   }
+
   // disable spawning of particles before frame count
   particlesSpawnCounter += 1
   if (particlesSpawnCounter < particlesSpawnCounterLimit) {
@@ -177,6 +191,9 @@ function spawnParticles() {
       particle.vx = pvelocity[0];
       particle.vy = pvelocity[1];
 
+      // aim particle
+      aimSprite(particle, pvelocity)
+
       // add to container
       app.stage.addChild(particle)
 
@@ -186,7 +203,8 @@ function spawnParticles() {
   }
 }
 
-function moveParticles(delta) {
+function moveParticles(step) {
+
   for (let index = 0; index < particlesCount; index++) {
 
     // create an alias
@@ -194,12 +212,12 @@ function moveParticles(delta) {
 
     // move particle
     if (particle.parent !== null) {
-      particle.x = particle.x + (particle.vx * particlesSpeed) * delta
-      particle.y = particle.y + (particle.vy * particlesSpeed) * delta
+      particle.x = particle.x + (particle.vx * step)
+      particle.y = particle.y + (particle.vy * step)
 
+      // visual metrics
       const height = app.renderer.height;
       const width = app.renderer.width;
-
       const xmin = 0
       const xmax = width - 1
       const ymin = 0
@@ -218,91 +236,62 @@ function moveParticles(delta) {
   }
 }
 
-function movePlayer(delta) {
+function movePlayer(step) {
 
-  if (player.vx !== 0 && player.vy !== 0) {
-    playerAnimationCounter++
-    while (playerAnimationCounter >= playerAnimationLimit) {
-      playerAnimationCounter -= playerAnimationLimit;
-      playerTexD = (playerTexD + 1) % playerTexC.length
-      player.texture = playerTexC[playerTexD]
-    }
-  } else {
-    playerTexD = 0
+  // disable animation of player until player moves
+  if (player.vx === 0 && player.vy === 0) {
+    return;
+  }
+
+  // animation
+  playerAnimationCounter += step;
+  while (playerAnimationCounter >= playerAnimationLimit) {
+    playerAnimationCounter -= playerAnimationLimit;
+    playerTexD = (playerTexD + 1) % playerTexC.length
     player.texture = playerTexC[playerTexD]
   }
 
-  const height = app.renderer.height;
-  const width = app.renderer.width;
+  // move
+  player.x = player.x + (player.vx * step)
+  player.y = player.y + (player.vy * step)
 
-  const xmin = 0
-  const xmax = width - 1
-  const ymin = 0
-  const ymax = height - 1
+  // visual metrics
+  const vm = getVisualMetrics();
 
-  const deltax = (player.vx * playerSpeed) * delta;
-  const deltay = (player.vy * playerSpeed) * delta;
-
-  let playerSpeedRemaining = playerSpeed;
-
-  while (1 <= playerSpeedRemaining) {
-    player.x = player.x + (player.vx * 1) * delta;
-    player.y = player.y + (player.vy * 1) * delta;
-    playerSpeedRemaining = playerSpeedRemaining - 1
-
-    collision()
-  }
-
-  if (0 < playerSpeedRemaining) {
-    player.x = player.x + (player.vx * playerSpeedRemaining) * delta;
-    player.y = player.y + (player.vy * playerSpeedRemaining) * delta;
-    playerSpeedRemaining = playerSpeedRemaining = 0
-
-    collision()
-  }
-  /*
-    for (let index = 0; index < MathplayerSpeed; index++) {
-      player.x = player.x + deltax
-    }
-    player.x = player.x + (player.vx * playerSpeed) * delta;
-    player.y = player.y + (player.vy * playerSpeed) * delta;
-  */
   // check for boundary collision
+
+  // calculate distance of player from origin of playfield
+  // calculate radius boundary from origin of playfield
   const pv = [player.x, player.y]
-  const ov = [xmin + (xmax - xmin) / 2, ymin + (ymax - ymin) / 2]
-  //debugger;
+  const ov = [vm.xmin + (vm.xmax - vm.xmin) / 2, vm.ymin + (vm.ymax - vm.ymin) / 2]
   const distancev = vec2Direction(ov, pv)
   const distance = vec2Magnitude(distancev)
-  const radius = radiusFactor * Math.min((xmax - xmin) / 2, (ymax - ymin) / 2)
+  const radius = radiusFactor * Math.min((vm.xmax - vm.xmin) / 2, (vm.ymax - vm.ymin) / 2)
 
   if (distance >= radius) {
+
+    // bounce the player off the playfield boundary
 
     const nv = vec2Normalize(vec2Direction(pv, ov))
     const dv = vec2Normalize([player.vx, player.vy])
 
+    // formula to calculate reflection vector
     // r = d - 2(d.n)n
     const temp1 = 2 * vec2Dot(dv, nv)
     const temp2 = [temp1 * nv[0], temp1 * nv[1]]
     const temp3 = [dv[0] - temp2[0], dv[1] - temp2[1]]
 
-    aimPlayer(temp3)
+    aimSprite(player, temp3)
   }
 }
 
 function collision() {
 
-  const height = app.renderer.height;
-  const width = app.renderer.width;
-
-  const xmin = 0
-  const xmax = width - 1
-  const ymin = 0
-  const ymax = height - 1
+  // visual metrics
+  const vm = getVisualMetrics();
 
   const playerRadius = Math.min(player.width, player.height) / 2
-
-  const playerv = [player.x, player.y]
-
+  const playerOrigin = [player.x, player.y]
 
   for (let index = 0; index < particlesCount; index++) {
 
@@ -311,27 +300,39 @@ function collision() {
 
     if (particle.parent !== null) {
       const particleRadius = Math.min(particle.width, particle.height) / 2;
-      const particlev = [particle.x, particle.y]
-      const dv = vec2Direction(particlev, playerv)
+      const particleOrigin = [particle.x, particle.y]
+      const dv = vec2Direction(particleOrigin, playerOrigin)
       const distance = vec2Magnitude(dv)
       const collisionDistance = Math.max(playerRadius, particleRadius)
 
       if (distance < collisionDistance) {
         app.stage.removeChild(particle)
-        playerSpeed *= 1.1;
-        player.scale.x *= 0.9;
-        player.scale.y *= 0.9;
-        playerAnimationLimit *= 0.9;
+        gameSpeedPlayer *= 1.10;
+        gameSpeedParticles *= 1.05;
+        player.scale.x /= 1.10;
+        player.scale.y /= 1.10;
+        //playerAnimationLimit *= 0.9;
       }
     }
   }
 }
 
-function aimPlayer(nv) {
+function getVisualMetrics() {
+  return {
+    height: app.renderer.height,
+    width: app.renderer.width,
+    xmin: 0,
+    xmax: app.renderer.width - 1,
+    ymin: 0,
+    ymax: app.renderer.height - 1,
+  }
+}
+
+function aimSprite(sprite, nv) {
   const pr = vec2Rotation(nv)
-  player.rotation = pr;
-  player.vx = nv[0]
-  player.vy = nv[1]
+  sprite.rotation = pr;
+  sprite.vx = nv[0]
+  sprite.vy = nv[1]
 }
 
 function vec2Direction(s, e) {
@@ -367,7 +368,6 @@ function vec2Rotation(p1) {
   return result
 }
 
-
 // run the game setup
 setup();
 
@@ -382,7 +382,9 @@ function playfieldClick(event) {
   // construct a vector from the sprite to the point
   const pv = [p.x - player.x, p.y - player.y]
   const pn = vec2Normalize(pv)
-  aimPlayer(pn)
+
+  // aim the player
+  aimSprite(player, pn)
 }
 
 function playfieldTouch(event) {
@@ -395,33 +397,7 @@ function playfieldTouch(event) {
   // construct a vector from the sprite to the point
   const pv = [p.x - player.x, p.y - player.y]
   const pn = vec2Normalize(pv)
-  aimPlayer(pn)
+
+  // aim the player
+  aimSprite(player, pn)
 }
-
-/*
-const sprites = {};
-
-const loader = PIXI.Loader.shared
-loader.add('cat', 'cat.png')
-loader.load((loader, resources) => {
-  sprites.cat = new PIXI.Sprite(resources.cat.texture);
-})
-*/
-//app.stage.x = 128
-//app.stage.y = 128
-/*
-let sprite = new PIXI.Sprite.from('cat.png');
-sprite.anchor.set(0.5); // This will set the origin to center. (0.5) is same as (0.5, 0.5).
-sprite.x = 0;
-sprite.y = 0;
-app.stage.addChild(sprite);
-
-
-const updatePoints = (event) => {
-  const p = new PIXI.Point()
-  app.renderer.plugins.interaction.mapPositionToPoint(p, event.x, event.y)
-  sprite.x = p.x
-  sprite.y = p.y
-}
-
-*/
