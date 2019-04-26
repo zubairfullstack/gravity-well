@@ -3,10 +3,13 @@
 /* eslint-disable max-statements */
 /* eslint-disable complexity */
 
+var clientw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+var clienth = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+
 //Create a Pixi Application
 let app = new PIXI.Application({
-  width: 640,
-  height: 640,
+  width: (clientw * 0.9375),
+  height: (clientw * 0.9375) * 9 / 16,
   antialias: true,
   transparent: false,
   autoDensity: true,
@@ -44,8 +47,46 @@ let radiusSize = 1
 let particleSize = 1
 let playerSize = 1
 
-// advanced steering mechanics
-let playfieldCapture = false
+function reset() {
+
+  // visual metrics
+  const vm = getVisualMetrics();
+
+  gameSpeedPlayer = 1.00;
+  gameSpeedParticles = 2.00;
+  particlesSpawnCounter = 0
+
+  playerTexD = 0
+  playerAnimationLimit = 10
+  playerAnimationCounter = 0
+
+  // remove all particles from view
+  for (let index = 0; index < particles.length; index++) {
+
+    // create an alias
+    const particle = particles[index]
+
+    // remove the particle
+    if (particle.parent !== null) {
+      app.stage.removeChild(particle)
+    }
+  }
+
+  // reset the player
+  player.x = vm.xmin + (vm.xmax - vm.xmin) / 2
+  player.y = vm.xmin + (vm.ymax - vm.ymin) / 2
+  player.rotation = 0
+  player.vx = 0
+  player.vy = 0
+  playerTexD = 0
+  player.texture = playerTexC[playerTexD]
+  {
+    const newSpriteSize = 32
+    const newSpriteScale = playerSize / newSpriteSize;
+    player.scale.x = newSpriteScale
+    player.scale.y = newSpriteScale
+  }
+}
 
 function setup() {
 
@@ -53,12 +94,36 @@ function setup() {
   const vm = getVisualMetrics();
 
   // calculate the radius size
-  radiusSize = radiusFactor * Math.min((vm.xmax - vm.xmin) / 2, (vm.ymax - vm.ymin) / 2)
+  radiusSize = radiusFactor * Math.min((vm.height), (vm.width)) / 2
 
+  // playfield
   {
     let circle = new PIXI.Graphics();
     circle.beginFill(0x17202a);
     circle.drawCircle(vm.xmin + (vm.xmax - vm.xmin) / 2, vm.ymin + (vm.ymax - vm.ymin) / 2, radiusSize);
+    circle.endFill();
+    app.stage.addChild(circle);
+  }
+
+  // button 1
+  {
+    // button 1 metrics
+    const bm = getButton1Metrics();
+
+    let circle = new PIXI.Graphics();
+    circle.beginFill(0xf9ebea);
+    circle.drawCircle(bm.borderOrigin[0], bm.borderOrigin[1], bm.borderRadius);
+    circle.endFill();
+    app.stage.addChild(circle);
+  }
+
+  {
+    // button 1 metrics
+    const bm = getButton1Metrics();
+
+    let circle = new PIXI.Graphics();
+    circle.beginFill(0xc0392b);
+    circle.drawCircle(bm.borderOrigin[0], bm.borderOrigin[1], bm.buttonRadius);
     circle.endFill();
     app.stage.addChild(circle);
   }
@@ -321,6 +386,10 @@ function collision() {
   }
 }
 
+//--------------------------------------------------
+// helper functions
+//--------------------------------------------------
+
 function getVisualMetrics() {
   return {
     height: app.renderer.height,
@@ -332,12 +401,39 @@ function getVisualMetrics() {
   }
 }
 
+function getButton1Metrics() {
+
+  // visual metrics
+  const vm = getVisualMetrics();
+  const playfieldDiameter = radiusFactor * Math.min((vm.height), (vm.width))
+
+  const borderMargin = (vm.height - playfieldDiameter) / 2;
+  const borderRadius = playfieldDiameter / 16;
+  const borderOrigin = [
+    vm.xmin + borderMargin + borderRadius,
+    vm.ymax - borderMargin - borderRadius
+  ]
+
+  const buttonRadius = borderRadius * 0.9;
+
+  return {
+    borderMargin,
+    borderRadius,
+    borderOrigin,
+    buttonRadius
+  }
+}
+
 function aimSprite(sprite, nv) {
   const pr = vec2Rotation(nv)
   sprite.rotation = pr;
   sprite.vx = nv[0]
   sprite.vy = nv[1]
 }
+
+//--------------------------------------------------
+// vector functions
+//--------------------------------------------------
 
 function vec2Direction(s, e) {
   const result = [e[0] - s[0], e[1] - s[1]]
@@ -372,63 +468,73 @@ function vec2Rotation(p1) {
   return result
 }
 
-// run the game setup
-setup();
+//--------------------------------------------------
+// control input
+//--------------------------------------------------
 
 window.addEventListener('mousedown', playfieldMouseDown, false);
-window.addEventListener('mousemove', playfieldMouseMove, false);
-window.addEventListener('mouseup', playfieldMouseUp, false);
-
 window.addEventListener('touchstart', playfieldTouch, false);
 
 function playfieldMouseDown(event) {
+
+  // get the input location
   const p = new PIXI.Point()
   app.renderer.plugins.interaction.mapPositionToPoint(p, event.x, event.y)
 
-  // construct a vector from the sprite to the point
-  const pv = [p.x - player.x, p.y - player.y]
-  const pn = vec2Normalize(pv)
-
-  // aim the player
-  aimSprite(player, pn)
-
-  // set capture
-  playfieldCapture = true;
-}
-
-function playfieldMouseMove(event) {
-  /*
-    if (playfieldCapture === true) {
-
-      const p = new PIXI.Point()
-      app.renderer.plugins.interaction.mapPositionToPoint(p, event.x, event.y)
-
-      // construct a vector from the sprite to the point
-      const pv = [p.x - player.x, p.y - player.y]
-      const pn = vec2Normalize(pv)
-
-      // aim the player
-      aimSprite(player, pn)
-    }
-  */
-}
-
-function playfieldMouseUp(event) {
-  // clear capture
-  playfieldCapture = false;
+  // process in the input
+  processInput(p);
 }
 
 function playfieldTouch(event) {
+
+  // get the input location
   const p = new PIXI.Point()
   app.renderer.plugins.interaction.mapPositionToPoint(
-    p,
-    event.touches[0].clientX,
-    event.touches[0].clientY)
+    p, event.touches[0].clientX, event.touches[0].clientY
+  )
 
-  // construct a vector from the sprite to the point
-  const pv = [p.x - player.x, p.y - player.y]
-  const pn = vec2Normalize(pv)
-
-  // aim the player
-  aimSprite(player, pn)
+  // process in the input
+  processInput(p);
 }
+
+function processInput(p) {
+
+  // visual metrics
+  const vm = getVisualMetrics();
+
+  // check for a click on the playfield
+  {
+    // construct a vector from the playfield origin to the point
+    const ov = [(vm.xmin + (vm.xmax - vm.xmin) / 2) - p.x, (vm.ymin + (vm.ymax - vm.ymin) / 2) - p.y]
+    const om = vec2Magnitude(ov)
+
+    if (om <= radiusSize) {
+
+      // construct a vector from the player origin to the point
+      const pv = [p.x - player.x, p.y - player.y]
+
+      // aim the player
+      aimSprite(player, vec2Normalize(pv))
+    }
+  }
+
+  // check for a click on button 1
+  {
+    // button metrics
+    const bm = getButton1Metrics();
+
+    // construct a vector from the button origin to the point
+    const ov = [bm.borderOrigin[0] - p.x, bm.borderOrigin[1] - p.y]
+    const om = vec2Magnitude(ov)
+    if (om <= bm.buttonRadius) {
+      // reset the game
+      reset();
+    }
+  }
+}
+
+//--------------------------------------------------
+// run the game setup
+//--------------------------------------------------
+setup();
+

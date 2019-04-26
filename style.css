@@ -6,6 +6,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #000;
-  margin: 100px
+  background-color: #000000;
+  margin-top: 32px;
+  margin-left: 0px;
+  margin-right: 0px;
+  margin-bottom: 0px;
 }
