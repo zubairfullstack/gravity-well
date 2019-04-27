@@ -19,8 +19,8 @@ let app = new PIXI.Application({
 //Add the canvas that Pixi automatically created for you to the HTML document
 document.getElementById('playfield').appendChild(app.view)
 
-let gameSpeedPlayer = 1.00;
-let gameSpeedParticles = 2.00;
+let gameSpeedPlayer = 1.00 * clientw / 1000;
+let gameSpeedParticles = 2.00 * clientw / 1000;
 let gameScoreBorder = {}
 let gameScoreBackground = {}
 let gameScoreText = {}
@@ -44,7 +44,7 @@ let playerTexC = [
 ]
 
 let playerTexD = 0
-let playerAnimationLimit = 10
+let playerAnimationLimit = 10 * clientw / 1000
 let playerAnimationCounter = 0
 
 let radiusFactor = 0.9375
