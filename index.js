@@ -11,7 +11,7 @@ var clientm = Math.min(clientw, clienth)
 //Create a Pixi Application
 let app = new PIXI.Application({
   width: (clientm * 0.90),
-  height: (clientm * 0.90) * 3 / 4,
+  height: (clientm * 0.90),
   antialias: true,
   transparent: false,
   autoDensity: true,
