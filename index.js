@@ -13,7 +13,7 @@ let app = new PIXI.Application({
   antialias: true,
   transparent: false,
   autoDensity: true,
-  backgroundColor: 0x21618C,
+  backgroundColor: 0x1B4F72
 });
 
 //Add the canvas that Pixi automatically created for you to the HTML document
@@ -250,6 +250,13 @@ function gameLoop(delta) {
     // move the particles
     moveParticles(stepSizeParticles)
 
+    // this is a workaround to enforce z ordering
+    // the player should be rendered above all particles
+    // remove the player
+    // add the player
+    app.stage.removeChild(player);
+    app.stage.addChild(player);
+
     // move the player
     movePlayer(stepSizePlayer)
 
@@ -388,6 +395,12 @@ function movePlayer(step) {
   player.x = player.x + (player.vx * step)
   player.y = player.y + (player.vy * step)
 
+  // check for player boundary collision
+  boundaryCheckPlayer();
+}
+
+function boundaryCheckPlayer(bounce = true) {
+
   // visual metrics
   const vm = getVisualMetrics();
 
@@ -398,23 +411,30 @@ function movePlayer(step) {
   const pv = [player.x, player.y]
   const ov = [vm.xmin + (vm.xmax - vm.xmin) / 2, vm.ymin + (vm.ymax - vm.ymin) / 2]
   const distancev = vec2Direction(ov, pv)
-  const distance = vec2Magnitude(distancev)
+  const distance = vec2Magnitude(distancev) + (player.width / 2)
   const radius = radiusFactor * Math.min((vm.xmax - vm.xmin) / 2, (vm.ymax - vm.ymin) / 2)
 
-  if (distance >= radius) {
-
-    // bounce the player off the playfield boundary
+  if (distance > radius) {
 
     const nv = vec2Normalize(vec2Direction(pv, ov))
     const dv = vec2Normalize([player.vx, player.vy])
 
-    // formula to calculate reflection vector
-    // r = d - 2(d.n)n
-    const temp1 = 2 * vec2Dot(dv, nv)
-    const temp2 = [temp1 * nv[0], temp1 * nv[1]]
-    const temp3 = [dv[0] - temp2[0], dv[1] - temp2[1]]
+    // move the player back to the playfield
+    const adjust = distance - radius;
+    player.x = player.x + nv[0] * adjust;
+    player.y = player.y + nv[1] * adjust;
 
-    aimSprite(player, temp3)
+    // bounce the player off the playfield boundary
+    if (bounce === true) {
+
+      // formula to calculate reflection vector
+      // r = d - 2(d.n)n
+      const temp1 = 2 * vec2Dot(dv, nv)
+      const temp2 = [temp1 * nv[0], temp1 * nv[1]]
+      const temp3 = [dv[0] - temp2[0], dv[1] - temp2[1]]
+
+      aimSprite(player, temp3)
+    }
   }
 }
 
@@ -440,9 +460,15 @@ function collision() {
 
       if (distance < collisionDistance) {
 
+        // positive collision
+
+        // remvove the particle
         app.stage.removeChild(particle)
+
+        // increase the score
         gameScore = (gameScore + 1) % gameScoreLimit
 
+        // process game direction logic
         if (0 > gameDirection) {
           gameSpeedPlayer *= 1.10;
           gameSpeedParticles *= 1.05;
@@ -455,12 +481,16 @@ function collision() {
           player.scale.y *= 1.10;
         }
 
-        // process game direction logic
+        // process game direction change logic
         gameDirectionSteps++;
         if (gameDirectionSteps >= gameDirectionStepsLimit) {
           gameDirectionSteps -= gameDirectionStepsLimit
           gameDirection = -gameDirection
         }
+
+        // increasing the player size may violate the playfield boundary
+        // => handle this condition
+        boundaryCheckPlayer(false);
       }
     }
   }
