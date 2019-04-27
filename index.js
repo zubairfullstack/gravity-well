@@ -5,11 +5,13 @@
 
 var clientw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
 var clienth = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+var clientm = Math.min(clientw, clienth)
+
 
 //Create a Pixi Application
 let app = new PIXI.Application({
-  width: (clientw * 1.00),
-  height: (clientw * 1.00) * 0.5,// / 16,
+  width: (clientm * 0.90),
+  height: (clientm * 0.90) * 3 / 4,
   antialias: true,
   transparent: false,
   autoDensity: true,
