@@ -396,10 +396,10 @@ function movePlayer(step) {
   player.y = player.y + (player.vy * step)
 
   // check for player boundary collision
-  boundaryCheckPlayer();
+  boundaryCheckPlayer(true);
 }
 
-function boundaryCheckPlayer(bounce = true) {
+function boundaryCheckPlayer(bounce) {
 
   // visual metrics
   const vm = getVisualMetrics();
@@ -414,15 +414,10 @@ function boundaryCheckPlayer(bounce = true) {
   const distance = vec2Magnitude(distancev) + (player.width / 2)
   const radius = radiusFactor * Math.min((vm.xmax - vm.xmin) / 2, (vm.ymax - vm.ymin) / 2)
 
-  if (distance > radius) {
+  if (distance >= radius) {
 
     const nv = vec2Normalize(vec2Direction(pv, ov))
     const dv = vec2Normalize([player.vx, player.vy])
-
-    // move the player back to the playfield
-    const adjust = distance - radius;
-    player.x = player.x + nv[0] * adjust;
-    player.y = player.y + nv[1] * adjust;
 
     // bounce the player off the playfield boundary
     if (bounce === true) {
@@ -435,6 +430,12 @@ function boundaryCheckPlayer(bounce = true) {
 
       aimSprite(player, temp3)
     }
+
+    // move the player back to the playfield
+    const adjust = distance - radius;
+    player.x = player.x + nv[0] * adjust;
+    player.y = player.y + nv[1] * adjust;
+
   }
 }
 
@@ -490,7 +491,7 @@ function collision() {
 
         // increasing the player size may violate the playfield boundary
         // => handle this condition
-        boundaryCheckPlayer(false);
+        boundaryCheckPlayer(true);
       }
     }
   }
