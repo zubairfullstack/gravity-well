@@ -8,12 +8,12 @@ var clienth = Math.max(document.documentElement.clientHeight, window.innerHeight
 
 //Create a Pixi Application
 let app = new PIXI.Application({
-  width: (clientw * 0.9375),
-  height: (clientw * 0.9375) * 9 / 16,
+  width: (clientw * 1.00),
+  height: (clientw * 1.00) * 0.5,// / 16,
   antialias: true,
   transparent: false,
   autoDensity: true,
-  backgroundColor: 0x0e6251,
+  backgroundColor: 0x21618C,
 });
 
 //Add the canvas that Pixi automatically created for you to the HTML document
@@ -25,7 +25,10 @@ let gameScoreBorder = {}
 let gameScoreBackground = {}
 let gameScoreText = {}
 let gameScore = 0
+const gameScoreLimit = 1000
 let gameDirection = -1
+let gameDirectionSteps = 0
+const gameDirectionStepsLimit = 20
 
 const particles = []
 const particlesCount = 16
@@ -34,10 +37,10 @@ let particlesSpawnCounter = 0
 
 let player = {}
 let playerTexC = [
-  PIXI.Texture.from('Player01.png'),
-  PIXI.Texture.from('Player02.png'),
-  PIXI.Texture.from('Player03.png'),
-  PIXI.Texture.from('Player02.png')
+  PIXI.Texture.from('Player100.png'),
+  PIXI.Texture.from('Player101.png'),
+  PIXI.Texture.from('Player102.png'),
+  PIXI.Texture.from('Player101.png')
 ]
 
 let playerTexD = 0
@@ -89,7 +92,7 @@ function reset() {
   playerTexD = 0
   player.texture = playerTexC[playerTexD]
   {
-    const newSpriteSize = 32
+    const newSpriteSize = 128
     const newSpriteScale = playerSize / newSpriteSize;
     player.scale.x = newSpriteScale
     player.scale.y = newSpriteScale
@@ -107,7 +110,9 @@ function setup() {
   // playfield
   {
     let circle = new PIXI.Graphics();
-    circle.beginFill(0x17202a);
+    circle.lineStyle(Math.max(1, radiusSize / 64), 0xffffff, 1);
+    circle.beginFill(0x000000);
+    //    circle.beginFill(0x17202a);
     circle.drawCircle(vm.xmin + (vm.xmax - vm.xmin) / 2, vm.ymin + (vm.ymax - vm.ymin) / 2, radiusSize);
     circle.endFill();
     app.stage.addChild(circle);
@@ -119,7 +124,7 @@ function setup() {
     const bm = getButton1Metrics();
 
     let circle = new PIXI.Graphics();
-    circle.beginFill(0xe8f8f5);
+    circle.beginFill(0xffffff);
     circle.drawCircle(bm.borderOrigin[0], bm.borderOrigin[1], bm.borderRadius);
     circle.endFill();
     app.stage.addChild(circle);
@@ -131,7 +136,7 @@ function setup() {
     const bm = getButton1Metrics();
 
     let circle = new PIXI.Graphics();
-    circle.beginFill(0xc0392b);
+    circle.beginFill(0xE74C3C);
     circle.drawCircle(bm.borderOrigin[0], bm.borderOrigin[1], bm.buttonRadius);
     circle.endFill();
     app.stage.addChild(circle);
@@ -143,7 +148,7 @@ function setup() {
     const bm = getButton2Metrics();
 
     gameScoreBorder = new PIXI.Graphics();
-    gameScoreBorder.beginFill(0xe8f8f5);
+    gameScoreBorder.beginFill(0xffffff);
     gameScoreBorder.drawCircle(bm.borderOrigin[0], bm.borderOrigin[1], bm.borderRadius);
     gameScoreBorder.endFill();
     app.stage.addChild(gameScoreBorder);
@@ -155,7 +160,7 @@ function setup() {
     const bm = getButton2Metrics();
 
     let gameScoreBackground = new PIXI.Graphics();
-    gameScoreBackground.beginFill(0x17202a);
+    gameScoreBackground.beginFill(0x000000);
     gameScoreBackground.drawCircle(bm.borderOrigin[0], bm.borderOrigin[1], bm.buttonRadius);
     gameScoreBackground.endFill();
     app.stage.addChild(gameScoreBackground);
@@ -168,7 +173,7 @@ function setup() {
 
     let style = new PIXI.TextStyle({
       fontFamily: "Arial",
-      fontSize: bm.borderRadius,
+      fontSize: 3 * bm.borderRadius / 4,
       fill: "#e8f8f5",
       stroke: '#c0392b',
       strokeThickness: 0,
@@ -192,7 +197,7 @@ function setup() {
 
   // setup particles
   for (let index = 0; index < particlesCount; index++) {
-    const newSprite = new PIXI.Sprite.from('Particle03.png');
+    const newSprite = new PIXI.Sprite.from('Particle100.png');
     // unable to query the texture size as it may not be loaded yet
     // sprite size is known to be 32x32 => use hard coded value
     const newSpriteSize = 32
@@ -210,8 +215,8 @@ function setup() {
   {
     const newSprite = new PIXI.Sprite.from(playerTexC[playerTexD]);
     // unable to query the texture size as it may not be loaded yet
-    // sprite size is known to be 32x32 => use hard coded value
-    const newSpriteSize = 32
+    // sprite size is known to be 128x128 => use hard coded value
+    const newSpriteSize = 128
     const newSpriteScale = playerSize / newSpriteSize;
     newSprite.anchor.x = 0.5
     newSprite.anchor.y = 0.5
@@ -436,7 +441,7 @@ function collision() {
       if (distance < collisionDistance) {
 
         app.stage.removeChild(particle)
-        gameScore = (gameScore + 1) % 100
+        gameScore = (gameScore + 1) % gameScoreLimit
 
         if (0 > gameDirection) {
           gameSpeedPlayer *= 1.10;
@@ -450,16 +455,12 @@ function collision() {
           player.scale.y *= 1.10;
         }
 
-        // check for a reversal of game direction
-        if (0 > gameDirection && player.scale.x < (particles[0].scale.x * 1)) {
-          gameDirection = +1
+        // process game direction logic
+        gameDirectionSteps++;
+        if (gameDirectionSteps >= gameDirectionStepsLimit) {
+          gameDirectionSteps -= gameDirectionStepsLimit
+          gameDirection = -gameDirection
         }
-
-        // check for a reversal of game direction
-        if (0 < gameDirection && player.scale.x > (particles[0].scale.x * 6)) {
-          gameDirection = -1
-        }
-
       }
     }
   }
