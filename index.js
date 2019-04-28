@@ -67,6 +67,7 @@ function reset() {
   gameSpeedParticles = 2.00;
   gameScore = 0
   gameDirection = -1
+  gameDirectionSteps = 0
   particlesSpawnCounter = 0
 
   playerTexD = 0
