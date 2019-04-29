@@ -21,8 +21,8 @@ let app = new PIXI.Application({
 //Add the canvas that Pixi automatically created for you to the HTML document
 document.getElementById('playfield').appendChild(app.view)
 
-let gameSpeedPlayer = 1.00 * clientw / 1000;
-let gameSpeedParticles = 2.00 * clientw / 1000;
+let gameSpeedPlayer = 1.00 * clientm / 500;
+let gameSpeedParticles = 2.00 * clientm / 500;
 let gameScoreBorder = {}
 let gameScoreBackground = {}
 let gameScoreText = {}
@@ -46,7 +46,7 @@ let playerTexC = [
 ]
 
 let playerTexD = 0
-let playerAnimationLimit = 10 * clientw / 1000
+let playerAnimationLimit = 10 * clientm / 500
 let playerAnimationCounter = 0
 
 let radiusFactor = 0.9375
@@ -63,15 +63,15 @@ function reset() {
   // visual metrics
   const vm = getVisualMetrics();
 
-  gameSpeedPlayer = 1.00;
-  gameSpeedParticles = 2.00;
+  gameSpeedPlayer = 1.00 * clientm / 500;
+  gameSpeedParticles = 2.00 * clientm / 500;
   gameScore = 0
   gameDirection = -1
   gameDirectionSteps = 0
   particlesSpawnCounter = 0
 
   playerTexD = 0
-  playerAnimationLimit = 10
+  playerAnimationLimit = 10 * clientm / 500
   playerAnimationCounter = 0
 
   // remove all particles from view
